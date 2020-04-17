@@ -1,0 +1,75 @@
+version: '3.4'
+
+x-webapp-template: &webapp-template
+  build: .
+  # We have to use the host network mode to make sure that the URLs for object
+  # storage which appear in the web interface match the ones the server uses.
+  network_mode: host
+  expose:
+    - "8000"
+  env_file:
+    - ./env/webapp.env
+    - ./env/minio.env
+  depends_on:
+    - smtp
+    - db
+    - minio
+
+services:
+  # PostgreSQL database for Subject Moderation Interface
+  db:
+    image: postgres
+    env_file: ./env/db.env
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres-data-local:/var/lib/postgresql/data
+      - postgres-backup-local:/backups
+
+  # A DB web frontend
+  dbpanel:
+    image: dockage/phppgadmin
+    depends_on:
+      - db
+    ports:
+      - "8003:80"
+    environment:
+      PHP_PG_ADMIN_SERVER_HOST: db
+
+  # minio provides an S3-compatible API so we can use object storage in
+  # development.
+  minio:
+    image: minio/minio
+    env_file: ./env/minio.env
+    ports:
+      - "8001:9000"
+    expose:
+      - "9000"
+    command: ['server', '/data']
+    volumes:
+      - minio-data-local:/data
+
+  # Debug SMTP provider. Provides UI on http://localhost:8025/
+  smtp:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8002:8025"
+
+  # The web application itself
+  webapp:
+    <<: *webapp-template
+
+  # Convenience service to make sure the latest database migrations are applied.
+  webapp_migrate:
+    <<: *webapp-template
+    # HACK: we sleep to give the database time to come up
+    entrypoint: ['sh', '-c', 'sleep 5 && ./manage.py migrate']
+
+volumes:
+  # Persistent volumes for postgres database data
+  postgres-data-local:
+  postgres-backup-local:
+
+  # Persistent volumes for object store
+  minio-data-local:
