@@ -15,7 +15,7 @@ djangocms-forms
 djangocms-googlemap>=1.2
 djangocms-link>=2.3
 djangocms-picture>=2.0,<2.2
-djangocms-snippet>=2.1,<2.2
+djangocms-snippet>=2.3,<2.4
 djangocms-style>=2.1
 djangocms-text-ckeditor>=3.7,<3.8
 djangocms-video>=2.0,<2.2
